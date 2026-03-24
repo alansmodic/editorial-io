@@ -40,6 +40,7 @@ class Editorial_IO {
 	 */
 	private function __construct() {
 		add_action( 'init', array( $this, 'register_meta' ) );
+		add_action( 'init', array( $this, 'register_editorial_panel_block' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
@@ -109,6 +110,27 @@ class Editorial_IO {
 				'_editorial_checklist_bypassed'    => array(
 					'type'    => 'boolean',
 					'default' => false,
+				),
+				// Editorial Control Panel meta fields.
+				'_editorial_workflow_status'       => array(
+					'type'    => 'string',
+					'default' => 'draft',
+				),
+				'_editorial_priority'              => array(
+					'type'    => 'string',
+					'default' => 'normal',
+				),
+				'_editorial_assigned_to'           => array(
+					'type'    => 'integer',
+					'default' => 0,
+				),
+				'_editorial_due_date'              => array(
+					'type'    => 'string',
+					'default' => '',
+				),
+				'_editorial_internal_notes'        => array(
+					'type'    => 'string',
+					'default' => '',
 				),
 			);
 
@@ -189,6 +211,8 @@ class Editorial_IO {
 				'wp-data',
 				'wp-api-fetch',
 				'wp-i18n',
+				'wp-blocks',
+				'wp-core-data',
 			),
 			EDITORIAL_IO_VERSION,
 			true
@@ -208,14 +232,16 @@ class Editorial_IO {
 			'editorial-io-editor',
 			'editorialIOData',
 			array(
-				'postId'           => $post->ID,
-				'stagedRevisionId' => (int) get_post_meta( $post->ID, '_editorial_has_staged_revision', true ),
-				'postPermalink'    => get_permalink( $post->ID ),
-				'restNonce'        => wp_create_nonce( 'wp_rest' ),
-				'siteUrl'          => get_site_url(),
-				'features'         => $settings->get_enabled_features(),
-				'config'           => $this->get_frontend_config(),
-				'strings'          => $this->get_localized_strings(),
+				'postId'               => $post->ID,
+				'stagedRevisionId'     => (int) get_post_meta( $post->ID, '_editorial_has_staged_revision', true ),
+				'postPermalink'        => get_permalink( $post->ID ),
+				'restNonce'            => wp_create_nonce( 'wp_rest' ),
+				'siteUrl'              => get_site_url(),
+				'features'             => $settings->get_enabled_features(),
+				'config'               => $this->get_frontend_config(),
+				'strings'              => $this->get_localized_strings(),
+				'controlPanelEnabled'  => $settings->is_feature_enabled( 'editorial_control_panel' ),
+				'users'                => $this->get_editorial_users(),
 			)
 		);
 	}
@@ -402,5 +428,48 @@ class Editorial_IO {
 	public static function post_type_supports_editorial( $post_type ) {
 		$supported_types = self::get_supported_post_types();
 		return in_array( $post_type, $supported_types, true ) && post_type_supports( $post_type, 'revisions' );
+	}
+
+	/**
+	 * Register the Editorial Control Panel block (backend-only, no frontend output).
+	 */
+	public function register_editorial_panel_block() {
+		$settings = Editorial_IO_Settings::get_instance();
+		if ( ! $settings->is_feature_enabled( 'editorial_control_panel' ) ) {
+			return;
+		}
+
+		register_block_type(
+			'editorial-io/editorial-panel',
+			array(
+				'render_callback' => '__return_empty_string',
+			)
+		);
+	}
+
+	/**
+	 * Get list of users who can edit posts, for the Editorial Control Panel assignment field.
+	 *
+	 * @return array
+	 */
+	private function get_editorial_users() {
+		$users = get_users(
+			array(
+				'capability' => 'edit_posts',
+				'fields'     => array( 'ID', 'display_name' ),
+				'orderby'    => 'display_name',
+				'order'      => 'ASC',
+			)
+		);
+
+		return array_map(
+			function ( $user ) {
+				return array(
+					'id'   => (int) $user->ID,
+					'name' => $user->display_name,
+				);
+			},
+			$users
+		);
 	}
 }
