@@ -59,11 +59,17 @@ class Editorial_IO_Settings {
 			'default'     => true,
 			'requires'    => array( 'revision_timeline' ),
 		),
-		'media_change_tracking' => array(
+		'media_change_tracking'   => array(
 			'label'       => 'Media Change Tracking',
 			'description' => 'Track and highlight changes to images, videos, and other media.',
 			'default'     => true,
 			'requires'    => array( 'revision_timeline' ),
+		),
+		'editorial_control_panel' => array(
+			'label'       => 'Editorial Control Panel',
+			'description' => 'Add a compact editorial workflow panel at the top of the block editor to manage status, priority, assignments, due dates, and internal notes without cluttering the sidebar.',
+			'default'     => true,
+			'requires'    => array(),
 		),
 	);
 

@@ -15,7 +15,7 @@
 
     const { registerPlugin } = wp.plugins;
     const { PluginSidebar, PluginSidebarMoreMenuItem } = wp.editPost;
-    const { useSelect, useDispatch, subscribe } = wp.data;
+    const { useSelect, useDispatch, subscribe, select, dispatch } = wp.data;
     const { useState, useEffect, useCallback, useRef } = wp.element;
     const {
         Button,
@@ -29,9 +29,12 @@
         DateTimePicker,
         Flex,
         FlexItem,
+        SelectControl,
     } = wp.components;
     const { __ } = wp.i18n;
     const apiFetch = wp.apiFetch;
+    const { registerBlockType, createBlock } = wp.blocks;
+    const { useEntityProp } = wp.coreData;
 
     // Get configuration
     const config = window.editorialIOData || {};
@@ -709,10 +712,189 @@
         );
     }
 
+    /**
+     * Editorial Control Panel Block Component (backend-only, auto-inserted at position 0).
+     * Manages editorial workflow metadata: status, priority, assignment, due date, notes.
+     */
+    function EditorialPanelBlock() {
+        const postType = useSelect((s) => s('core/editor').getCurrentPostType(), []);
+        const [meta, setMeta] = useEntityProp('postType', postType, 'meta');
+        const [notesExpanded, setNotesExpanded] = useState(false);
+
+        if (!meta) return null;
+
+        const workflowStatus = meta._editorial_workflow_status || 'draft';
+        const priority       = meta._editorial_priority || 'normal';
+        const assignedTo     = meta._editorial_assigned_to || 0;
+        const dueDate        = meta._editorial_due_date || '';
+        const notes          = meta._editorial_internal_notes || '';
+
+        const updateMeta = (key, value) => setMeta({ ...meta, [key]: value });
+
+        const priorityColors = { low: '#72aee6', normal: '#8c8f94', high: '#f0b849', urgent: '#d63638' };
+        const statusColors   = {
+            idea:       '#8c8f94',
+            draft:      '#72aee6',
+            'in-review':'#f0b849',
+            approved:   '#4ab866',
+            ready:      '#2271b1',
+        };
+        const statusLabels = {
+            idea:       __('Idea',              'editorial-io'),
+            draft:      __('Draft',             'editorial-io'),
+            'in-review':__('In Review',         'editorial-io'),
+            approved:   __('Approved',          'editorial-io'),
+            ready:      __('Ready to Publish',  'editorial-io'),
+        };
+
+        const users = (window.editorialIOData?.users || []).map((u) => ({
+            value: String(u.id),
+            label: u.name,
+        }));
+
+        return (
+            <div
+                className="editorial-io-panel-block"
+                style={{ borderLeftColor: priorityColors[priority] || '#8c8f94' }}
+            >
+                <div className="eio-panel-header">
+                    <span className="eio-panel-title">
+                        {__('Editorial', 'editorial-io')}
+                    </span>
+                    <span
+                        className="eio-status-badge"
+                        style={{ backgroundColor: statusColors[workflowStatus] || '#8c8f94' }}
+                    >
+                        {statusLabels[workflowStatus] || workflowStatus}
+                    </span>
+                </div>
+
+                <div className="eio-panel-row">
+                    <SelectControl
+                        label={__('Status', 'editorial-io')}
+                        value={workflowStatus}
+                        onChange={(v) => updateMeta('_editorial_workflow_status', v)}
+                        options={[
+                            { label: __('Idea',             'editorial-io'), value: 'idea'      },
+                            { label: __('Draft',            'editorial-io'), value: 'draft'     },
+                            { label: __('In Review',        'editorial-io'), value: 'in-review' },
+                            { label: __('Approved',         'editorial-io'), value: 'approved'  },
+                            { label: __('Ready to Publish', 'editorial-io'), value: 'ready'     },
+                        ]}
+                    />
+                    <SelectControl
+                        label={__('Priority', 'editorial-io')}
+                        value={priority}
+                        onChange={(v) => updateMeta('_editorial_priority', v)}
+                        options={[
+                            { label: __('Low',    'editorial-io'), value: 'low'    },
+                            { label: __('Normal', 'editorial-io'), value: 'normal' },
+                            { label: __('High',   'editorial-io'), value: 'high'   },
+                            { label: __('Urgent', 'editorial-io'), value: 'urgent' },
+                        ]}
+                    />
+                    <SelectControl
+                        label={__('Assigned To', 'editorial-io')}
+                        value={String(assignedTo)}
+                        onChange={(v) => updateMeta('_editorial_assigned_to', parseInt(v, 10))}
+                        options={[
+                            { label: __('— Unassigned —', 'editorial-io'), value: '0' },
+                            ...users,
+                        ]}
+                    />
+                    <div className="eio-due-date-field">
+                        <label className="eio-label" htmlFor="eio-due-date">
+                            {__('Due Date', 'editorial-io')}
+                        </label>
+                        <input
+                            id="eio-due-date"
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => updateMeta('_editorial_due_date', e.target.value)}
+                            className="eio-date-input"
+                        />
+                    </div>
+                </div>
+
+                <div className="eio-panel-notes-toggle">
+                    <Button
+                        isLink
+                        onClick={() => setNotesExpanded(!notesExpanded)}
+                        className="eio-notes-toggle-btn"
+                    >
+                        {notesExpanded
+                            ? __('Hide internal notes', 'editorial-io')
+                            : (notes
+                                ? __('Show internal notes', 'editorial-io')
+                                : __('Add internal notes', 'editorial-io')
+                              )
+                        }
+                    </Button>
+                </div>
+
+                {notesExpanded && (
+                    <TextareaControl
+                        label={__('Internal Notes (not published)', 'editorial-io')}
+                        value={notes}
+                        onChange={(v) => updateMeta('_editorial_internal_notes', v)}
+                        placeholder={__('Notes visible only in the editor...', 'editorial-io')}
+                        rows={3}
+                        className="eio-notes-textarea"
+                    />
+                )}
+            </div>
+        );
+    }
+
     // Register the plugin.
     registerPlugin('editorial-io', {
         render: EditorialIOPlugin,
         icon: 'edit-large',
     });
+
+    // Register and auto-insert the Editorial Control Panel block if the feature is enabled.
+    if (config.controlPanelEnabled) {
+        registerBlockType('editorial-io/editorial-panel', {
+            title: __('Editorial Panel', 'editorial-io'),
+            icon: 'clipboard',
+            category: 'text',
+            supports: {
+                inserter: false,  // Hidden from the block inserter.
+                multiple: false,  // Only one instance allowed per post.
+                html: false,
+                lock: false,
+            },
+            edit: EditorialPanelBlock,
+            save: () => null, // Dynamic block: PHP render_callback returns empty string.
+        });
+
+        // Auto-insert the panel at position 0 whenever the editor loads, if not already present.
+        // Uses a one-shot subscriber that unsubscribes after confirming/inserting.
+        let panelInserted = false;
+        const unsubscribePanel = subscribe(function () {
+            if (panelInserted) return;
+
+            const editorStore     = select('core/editor');
+            const blockEditorStore = select('core/block-editor');
+            if (!editorStore || !blockEditorStore) return;
+
+            // Wait until blocks are available (editor fully initialised).
+            const blocks = blockEditorStore.getBlocks();
+            if (!blocks || blocks.length === 0) return;
+
+            const hasPanel = blocks.some((b) => b.name === 'editorial-io/editorial-panel');
+            if (!hasPanel) {
+                dispatch('core/block-editor').insertBlock(
+                    createBlock('editorial-io/editorial-panel'),
+                    0,         // Insert at the very top.
+                    undefined, // Root level (no parent block).
+                    false      // Don't steal focus from the title field.
+                );
+            }
+
+            panelInserted = true;
+            unsubscribePanel();
+        });
+    }
 
 })();

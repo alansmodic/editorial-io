@@ -407,3 +407,145 @@
         transition: none;
     }
 }
+
+/* ============================================================
+   Editorial Control Panel Block
+   Backend-only block that auto-inserts at the top of the editor.
+   ============================================================ */
+
+.editorial-io-panel-block {
+    background: #f8f9fa;
+    border: 1px solid #e2e4e7;
+    border-left-width: 4px;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Header row: "Editorial" label + status badge */
+.eio-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.eio-panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #757575;
+}
+
+.eio-status-badge {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* Main fields row */
+.eio-panel-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.eio-panel-row .components-base-control {
+    flex: 1;
+    min-width: 120px;
+    margin-bottom: 0;
+}
+
+.eio-panel-row .components-base-control__label {
+    font-size: 11px;
+}
+
+.eio-panel-row select.components-select-control__input {
+    font-size: 12px;
+    height: 30px;
+    padding: 0 6px;
+}
+
+/* Due date field */
+.eio-due-date-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 120px;
+}
+
+.eio-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #1e1e1e;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.eio-date-input {
+    border: 1px solid #8c8f94;
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 13px;
+    height: 30px;
+    color: #1e1e1e;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.eio-date-input:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: none;
+}
+
+/* Notes toggle and textarea */
+.eio-panel-notes-toggle {
+    margin-top: 4px;
+}
+
+.eio-notes-toggle-btn.components-button {
+    font-size: 12px;
+    color: #2271b1;
+    padding: 0;
+    height: auto;
+    min-height: 0;
+}
+
+.eio-notes-textarea .components-base-control__label {
+    font-size: 11px;
+}
+
+.eio-notes-textarea textarea {
+    font-size: 13px;
+    min-height: 60px;
+}
+
+/* Compact select controls inside the panel */
+.editorial-io-panel-block .components-select-control__input {
+    padding: 2px 24px 2px 6px;
+    height: 30px;
+    font-size: 12px;
+}
+
+/* Responsive: stack fields on narrow editor widths */
+@media (max-width: 600px) {
+    .eio-panel-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .eio-due-date-field {
+        min-width: 0;
+    }
+}
