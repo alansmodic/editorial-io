@@ -129,12 +129,15 @@ class Editorial_IO {
 					'default' => '',
 				),
 				'_editorial_internal_notes'        => array(
-					'type'    => 'string',
-					'default' => '',
+					'type'              => 'string',
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_textarea_field',
 				),
 			);
 
 			foreach ( $post_meta as $key => $args ) {
+				$sanitize_callback = isset( $args['sanitize_callback'] ) ? $args['sanitize_callback'] : $this->get_sanitize_callback( $args['type'] );
+
 				register_post_meta(
 					$post_type,
 					$key,
@@ -144,7 +147,7 @@ class Editorial_IO {
 						'default'           => $args['default'],
 						'show_in_rest'      => true,
 						'auth_callback'     => array( $this, 'meta_auth_callback' ),
-						'sanitize_callback' => $this->get_sanitize_callback( $args['type'] ),
+						'sanitize_callback' => $sanitize_callback,
 					)
 				);
 			}
